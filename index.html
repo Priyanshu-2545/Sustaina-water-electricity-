@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.png" type="image/png">
+
+    <!-- App Info -->
+    <title>SUSTAINA - Water & Electricity Tracking</title>
+    <meta name="description" content="Track and optimize your water and electricity consumption with SUSTAINA" />
+    <meta name="author" content="SUSTAINA" />
+
+  </head>
+
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'dark') document.documentElement.classList.add('dark');
+    })();
+  </script>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

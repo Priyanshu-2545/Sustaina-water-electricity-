@@ -1,0 +1,1 @@
+ALTER TABLE public.devices ADD COLUMN category text NOT NULL DEFAULT 'other';
