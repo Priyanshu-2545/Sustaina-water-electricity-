@@ -14,7 +14,7 @@ const Login = () => {
   const { signIn, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // ✅ AUTO REDIRECT (IMPORTANT)
+  // ✅ Auto redirect after login
   useEffect(() => {
     if (!authLoading && user) {
       navigate("/dashboard", { replace: true });
@@ -28,7 +28,6 @@ const Login = () => {
     try {
       await signIn(email, password);
       toast.success("Welcome back!");
-      // ❌ navigate yaha se hata diya (auto redirect handle karega)
     } catch (err: any) {
       toast.error(err.message || "Login failed");
     } finally {
@@ -36,7 +35,7 @@ const Login = () => {
     }
   };
 
-  // ✅ Loading state handle (white screen fix)
+  // ✅ Loading screen
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -47,28 +46,31 @@ const Login = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-4xl rounded-2xl border border-border bg-card shadow-lg overflow-hidden">
+      <div className="w-full max-w-5xl rounded-2xl border border-border bg-card shadow-lg overflow-hidden">
+
+        {/* ✅ FIXED: Always 2 column like Signup */}
         <div className="grid grid-cols-2">
-          
-          {/* Left Image */}
-          <div className="hidden md:flex items-center justify-center bg-secondary p-6">
+
+          {/* 🔵 LEFT IMAGE */}
+          <div className="flex items-center justify-center bg-secondary p-4">
             <img
               src={authIllustration}
               alt="Auth Illustration"
-              className="w-full h-full object-cover"
+              className="w-full max-w-[260px] md:max-w-sm object-contain"
             />
           </div>
 
-          {/* Right Form */}
-          <div className="flex flex-col justify-center p-8 md:p-12">
-            <h1 className="text-3xl font-bold font-display text-primary mb-2">
+          {/* 🟢 RIGHT FORM */}
+          <div className="flex flex-col justify-center p-6 md:p-12">
+            <h1 className="text-3xl font-bold text-primary mb-2">
               Login here
             </h1>
-            <p className="text-muted-foreground mb-8">
+            <p className="text-muted-foreground mb-6">
               Welcome back, you've been missed!
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+
               <Input
                 type="email"
                 placeholder="Email"
@@ -94,7 +96,12 @@ const Login = () => {
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={loading}
+              >
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
