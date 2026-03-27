@@ -1,7 +1,25 @@
-# Welcome to your Lovable project
+## Sustaina – Water & Electricity Management System
+- A full-stack web application to track and manage water and electricity consumption with a modern dashboard and secure authentication.
 
-## Project info
+## ✨ Features
+- 🔐 User Authentication (Signup/Login with Email Verification)
+- 📊 Interactive Dashboard with usage tracking
+- 🧑‍💼 User Profile Management
+- 🖼️ Avatar Upload (Supabase Storage)
+- 🔒 Row Level Security (RLS)
+- ⚡ Real-time data handling with Supabase
+- 📱 Fully Responsive UI
 
+## 🛠️ Tech Stack
+- Frontend: React + Tailwind CSS
+- Backend: Supabase
+- Database: PostgreSQL
+- Authentication: Supabase Auth
+- Storage: Supabase Storage
+- Version Control: GitHub
+
+
+## Installation
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
@@ -21,34 +39,14 @@ npm i
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
 
 ## Detail of Project
+
+- Designed a responsive dashboard with real-time data visualization for monthly consumption and targets.
 
 -  analytics-based recommendations to optimize     energy and water usage.
 
 -  collect and process user consumption data.
 
 - data aggregation and user insights generation.
+
