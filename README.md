@@ -50,13 +50,14 @@ npm run dev
 
 - data aggregation and user insights generation.
 
+
 ## 📸 Screenshots
 
-### 🔐 onboarding Page
-![onboarding](./screenshots/onboarding.png)
+### 🔐 Onboarding Page
+![Onboarding](./screenshots/onboarding.png)
 
 ### 📊 Dashboard
 ![Dashboard](./screenshots/dashboard.png)
 
-### Report
+### 📈 Report
 ![Report](./screenshots/report.png)
