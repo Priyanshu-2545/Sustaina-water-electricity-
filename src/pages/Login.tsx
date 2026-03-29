@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react"; // ✅ ADD
 import authIllustration from "@/assets/auth-illustration.png";
 
 const Login = () => {
@@ -11,10 +12,11 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [showPassword, setShowPassword] = useState(false); // ✅ ADD
+
   const { signIn, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // ✅ Auto redirect after login
   useEffect(() => {
     if (!authLoading && user) {
       navigate("/dashboard", { replace: true });
@@ -35,7 +37,6 @@ const Login = () => {
     }
   };
 
-  // ✅ Loading screen
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -48,10 +49,8 @@ const Login = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-5xl rounded-2xl border border-border bg-card shadow-lg overflow-hidden">
 
-        {/* ✅ FIXED: Always 2 column like Signup */}
         <div className="grid grid-cols-2">
 
-          {/* 🔵 LEFT IMAGE */}
           <div className="flex items-center justify-center bg-secondary p-4">
             <img
               src={authIllustration}
@@ -60,7 +59,6 @@ const Login = () => {
             />
           </div>
 
-          {/* 🟢 RIGHT FORM */}
           <div className="flex flex-col justify-center p-6 md:p-12">
             <h1 className="text-3xl font-bold text-primary mb-2">
               Login here
@@ -79,13 +77,24 @@ const Login = () => {
                 required
               />
 
-              <Input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              {/* 🔥 PASSWORD WITH EYE */}
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
 
               <div className="text-right">
                 <Link

@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react"; // ✅ ADD
 import authIllustration from "@/assets/auth-illustration.png";
 
 const Signup = () => {
@@ -12,6 +13,8 @@ const Signup = () => {
   const [password, setPassword] = useState("");
   const [mobile, setMobile] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false); // ✅ ADD
 
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -26,9 +29,15 @@ const Signup = () => {
 
     setLoading(true);
     try {
-      await signUp(email, password, username, mobile);
-      toast.success("Account created! Check your email to verify.");
-      navigate("/login");
+      const { session } = await signUp(email, password, username, mobile);
+
+      if (session) {
+        toast.success("Account created successfully!");
+        navigate("/dashboard");
+      } else {
+        toast.success("Account created! Please login.");
+        navigate("/login");
+      }
     } catch (err: any) {
       toast.error(err?.message || "Signup failed");
     } finally {
@@ -39,9 +48,9 @@ const Signup = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-3 sm:p-4">
       <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
-        {/* Side-by-side on all screen sizes */}
+        
         <div className="grid grid-cols-[0.95fr_1.05fr] sm:grid-cols-[1fr_1.1fr]">
-          {/* Image panel */}
+          
           <div className="flex min-w-0 items-center justify-center bg-secondary p-3 sm:p-5 md:p-8">
             <img
               src={authIllustration}
@@ -51,7 +60,6 @@ const Signup = () => {
             />
           </div>
 
-          {/* Form panel */}
           <div className="min-w-0 p-4 sm:p-5 md:p-8 lg:p-10">
             <h1 className="mb-1 font-display text-xl font-bold text-primary sm:text-2xl md:text-3xl">
               Create Account
@@ -61,6 +69,7 @@ const Signup = () => {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-3">
+              
               <Input
                 placeholder="Username"
                 value={username}
@@ -68,6 +77,7 @@ const Signup = () => {
                 required
                 className="h-9"
               />
+
               <Input
                 type="email"
                 placeholder="Email"
@@ -76,15 +86,27 @@ const Signup = () => {
                 required
                 className="h-9"
               />
-              <Input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="h-9"
-              />
+
+              {/* 🔥 PASSWORD WITH EYE */}
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="h-9 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
               <Input
                 placeholder="Mobile No."
                 value={mobile}
@@ -103,6 +125,7 @@ const Signup = () => {
                 Log in
               </Link>
             </p>
+
           </div>
         </div>
       </div>
