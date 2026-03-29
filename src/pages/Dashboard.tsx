@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Plus, Search, Bell, HelpCircle, Zap, Droplets, AirVent, Fan, Flame, Droplet, Tv, Lightbulb, Refrigerator, WashingMachine } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import ProfileMenu from "@/components/ProfileMenu";
+import { Trash2 } from "lucide-react";
 
 const DEVICE_CATEGORIES = [
   { value: "ac", label: "AC", icon: AirVent },
@@ -51,6 +52,7 @@ const Dashboard = () => {
   const [totalWater, setTotalWater] = useState(0);
   const [dailyAvgElec, setDailyAvgElec] = useState(0);
   const [dailyAvgWater, setDailyAvgWater] = useState(0);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -179,6 +181,24 @@ const Dashboard = () => {
     if (selectedRoom) fetchDevices(selectedRoom);
   };
 
+  const deleteDevice = async (deviceId: string) => {
+  const { error } = await supabase
+    .from("devices")
+    .delete()
+    .eq("id", deviceId);
+
+  if (error) {
+    toast.error(error.message);
+    return;
+  }
+
+  toast.success("Device deleted!");
+  
+  if (selectedRoom) {
+    fetchDevices(selectedRoom);
+  }
+};
+
   const setMonthlyTarget = async () => {
     if (!user) return;
     const now = new Date();
@@ -220,6 +240,28 @@ const Dashboard = () => {
       }
     }
   };
+
+
+  const resetData = async () => {
+  if (!user) return;
+
+  await supabase
+    .from("consumption_logs")
+    .delete()
+    .eq("user_id", user.id);
+
+  await supabase
+    .from("monthly_targets")
+    .delete()
+    .eq("user_id", user.id);
+
+  toast.success("Data reset successfully!");
+
+  setResetDialogOpen(false); // 👈 modal close
+  fetchConsumptionData();
+  fetchTargets();
+};
+  
 
   const getSuggestions = () => {
     const suggestions: string[] = [];
@@ -410,53 +452,151 @@ const Dashboard = () => {
                 {selectedRoom ? "No devices yet. Add one!" : "Select or add a room first."}
               </p>
             ) : (
-              filteredDevices.map((device) => (
-                <div key={device.id} className="device-row">
-                  <div className="flex items-center gap-3">
-                    {(() => { const Icon = getCategoryIcon(device.category); return <Icon className={`h-4 w-4 ${device.type === "water" ? "text-chart-water" : "text-chart-electricity"}`} />; })()}
-                    <div>
-                      <span className="font-medium">{device.name}</span>
-                      <span className="text-xs text-muted-foreground ml-2 capitalize">{device.category}</span>
-                    </div>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{device.power_kwh}{device.type === "water" ? "L" : "kWh"}</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs ${device.is_on ? "text-success" : "text-muted-foreground"}`}>
-                      {device.is_on ? "On" : "Off"}
-                    </span>
-                    <Switch checked={device.is_on} onCheckedChange={() => toggleDevice(device)} />
-                  </div>
-                </div>
-              ))
+             filteredDevices.map((device) => (
+  <div key={device.id} className="device-row">
+    
+    <div className="flex items-center gap-3">
+      {(() => {
+        const Icon = getCategoryIcon(device.category);
+        return (
+          <Icon
+            className={`h-4 w-4 ${
+              device.type === "water"
+                ? "text-chart-water"
+                : "text-chart-electricity"
+            }`}
+          />
+        );
+      })()}
+
+      <div>
+        <span className="font-medium">{device.name}</span>
+        <span className="text-xs text-muted-foreground ml-2 capitalize">
+          {device.category}
+        </span>
+      </div>
+    </div>
+
+    <span className="text-sm text-muted-foreground">
+      {device.power_kwh}
+      {device.type === "water" ? "L" : "kWh"}
+    </span>
+
+    {/* UPDATED SECTION */}
+    <div className="flex items-center gap-2">
+      
+      <span
+        className={`text-xs ${
+          device.is_on ? "text-success" : "text-muted-foreground"
+        }`}
+      >
+        {device.is_on ? "On" : "Off"}
+      </span>
+
+      <Switch
+        checked={device.is_on}
+        onCheckedChange={() => toggleDevice(device)}
+      />
+
+      {/* 🔴 DELETE BUTTON */}
+      
+      <button title="Delete Device" onClick={() => deleteDevice(device.id)} className="p-2 rounded-md hover:bg-red-100 transition">
+      <Trash2 className="h-5 w-5 text-red-500" />
+      </button>
+
+    </div>
+  </div>
+))
             )}
           </div>
         </div>
 
         {/* Monthly Targets — both electricity and water */}
-        <div className="rounded-xl border border-border bg-card p-6 flex flex-col items-center justify-center text-center">
-          <h3 className="section-title mb-4">Monthly Targets</h3>
-          <div className="flex gap-6 flex-wrap justify-center mb-4">
-            <TargetRing pct={elecPct} consumed={totalElectricity} target={elecTarget?.target_amount} label="Electricity" color="hsl(205, 90%, 60%)" />
-            <TargetRing pct={waterPct} consumed={totalWater} target={waterTarget?.target_amount} label="Water" color="hsl(185, 70%, 50%)" />
-          </div>
-          <Dialog open={targetDialogOpen} onOpenChange={setTargetDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">Set Target</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Set Monthly Target</DialogTitle></DialogHeader>
-              <Select value={newTarget.type} onValueChange={(v) => setNewTarget({ ...newTarget, type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="electricity">Electricity (kWh)</SelectItem>
-                  <SelectItem value="water">Water (L)</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input type="number" placeholder="Target amount" value={newTarget.target_amount || ""} onChange={(e) => setNewTarget({ ...newTarget, target_amount: Number(e.target.value) })} />
-              <Button onClick={setMonthlyTarget}>Save Target</Button>
-            </DialogContent>
-          </Dialog>
-        </div>
+<div className="rounded-xl border border-border bg-card p-6 flex flex-col items-center justify-center text-center">
+  
+  <h3 className="section-title mb-4">Monthly Targets</h3>
+
+  <div className="flex gap-6 flex-wrap justify-center mb-4">
+    <TargetRing
+      pct={elecPct}
+      consumed={totalElectricity}
+      target={elecTarget?.target_amount}
+      label="Electricity"
+      color="hsl(205, 90%, 60%)"
+    />
+    <TargetRing
+      pct={waterPct}
+      consumed={totalWater}
+      target={waterTarget?.target_amount}
+      label="Water"
+      color="hsl(185, 70%, 50%)"
+    />
+  </div>
+
+  {/* BUTTON SECTION */}
+  <div className="flex gap-2">
+
+  {/* SET TARGET BUTTON */}
+  <Dialog open={targetDialogOpen} onOpenChange={setTargetDialogOpen}>
+    <DialogTrigger asChild>
+      <Button variant="outline" size="sm">Set Target</Button>
+    </DialogTrigger>
+
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Set Monthly Target</DialogTitle>
+      </DialogHeader>
+
+      <Select value={newTarget.type} onValueChange={(v) => setNewTarget({ ...newTarget, type: v })}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="electricity">Electricity (kWh)</SelectItem>
+          <SelectItem value="water">Water (L)</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Input
+        type="number"
+        placeholder="Target amount"
+        value={newTarget.target_amount || ""}
+        onChange={(e) => setNewTarget({ ...newTarget, target_amount: Number(e.target.value) })}
+      />
+
+      <Button onClick={setMonthlyTarget}>Save Target</Button>
+    </DialogContent>
+  </Dialog>
+
+  {/* 🔴 RESET BUTTON */}
+  <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+    <DialogTrigger asChild>
+      <Button variant="destructive" size="sm">
+        Reset Data
+      </Button>
+    </DialogTrigger>
+
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Reset Data</DialogTitle>
+      </DialogHeader>
+
+      <p className="text-sm text-muted-foreground">
+        Are you sure you want to reset all electricity and water data? This action cannot be undone.
+      </p>
+
+      <div className="flex justify-end gap-2 mt-4">
+        <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
+          Cancel
+        </Button>
+
+        <Button variant="destructive" onClick={resetData}>
+          Yes, Reset
+        </Button>
+      </div>
+    </DialogContent>
+  </Dialog>
+
+</div>
+</div>
       </div>
     </div>
   );
