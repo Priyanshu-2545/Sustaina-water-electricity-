@@ -139,30 +139,79 @@ const Dashboard = () => {
   };
 
   const addDevice = async () => {
-    if (!newDevice.name.trim() || !selectedRoom || !user) return;
-    const { error } = await supabase.from("devices").insert({
-      name: newDevice.name.trim(),
-      power_kwh: newDevice.power_kwh,
-      type: newDevice.type,
-      category: newDevice.category,
-      room_id: selectedRoom,
-      user_id: user.id,
-    });
-    if (error) { toast.error(error.message); return; }
-    await supabase.from("consumption_logs").insert({
-      user_id: user.id,
-      room_id: selectedRoom,
-      type: newDevice.type,
-      amount: newDevice.power_kwh,
-      unit: newDevice.type === "water" ? "L" : "kWh",
-    });
-    toast.success("Device added!");
-    setNewDevice({ name: "", power_kwh: 0, type: "electricity", category: "other" });
-    setDeviceDialogOpen(false);
-    fetchDevices(selectedRoom);
-    fetchConsumptionData();
-    checkConsumptionAlerts();
-  };
+  // 🔍 DEBUG (optional but useful)
+  console.log("ADD DEVICE:", {
+    name: newDevice.name,
+    selectedRoom,
+    user,
+  });
+
+  // ✅ Proper validation (better UX)
+  if (!newDevice.name.trim()) {
+    toast.error("Please enter device name");
+    return;
+  }
+
+  if (!selectedRoom) {
+    toast.error("Please select a room first");
+    return;
+  }
+
+  if (!user) {
+    toast.error("Session expired. Please login again");
+    return;
+  }
+
+  // 🔥 STEP 1: Insert device
+  const { error: deviceError } = await supabase.from("devices").insert({
+    name: newDevice.name.trim(),
+    power_kwh: Number(newDevice.power_kwh) || 0,
+    type: newDevice.type,
+    category: newDevice.category,
+    room_id: selectedRoom,
+    user_id: user.id,
+    is_on: true, // ✅ REQUIRED
+  });
+
+  if (deviceError) {
+    console.error("DEVICE ERROR:", deviceError);
+    toast.error(deviceError.message);
+    return;
+  }
+
+  // 🔥 STEP 2: Insert consumption log (safe)
+  const { error: logError } = await supabase.from("consumption_logs").insert({
+    user_id: user.id,
+    room_id: selectedRoom,
+    type: newDevice.type,
+    amount: Number(newDevice.power_kwh) || 0,
+    unit: newDevice.type === "water" ? "L" : "kWh",
+  });
+
+  if (logError) {
+    console.error("LOG ERROR:", logError);
+    toast.warning("Device added but log not saved");
+  }
+
+  // ✅ SUCCESS
+  toast.success("Device added successfully!");
+
+  // 🔄 Reset form
+  setNewDevice({
+    name: "",
+    power_kwh: 0,
+    type: "electricity",
+    category: "other",
+  });
+
+  setDeviceDialogOpen(false);
+
+  // 🔄 Refresh UI
+  fetchDevices(selectedRoom);
+  fetchConsumptionData();
+  checkConsumptionAlerts();
+};
+    
 
   const toggleDevice = async (device: Device) => {
     await supabase.from("devices").update({ is_on: !device.is_on }).eq("id", device.id);
