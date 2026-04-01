@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: "https://sustaina-water-electricity-app.vercel.app/auth/callback",
+      redirectTo: "https://sustaina-water-electricity-app.vercel.app/dashboard",
     },
   });
 
