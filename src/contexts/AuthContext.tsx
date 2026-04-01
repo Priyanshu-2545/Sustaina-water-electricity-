@@ -62,16 +62,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 🔥 GOOGLE SIGN IN (NEW)
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: "https://sustaina-water-electricity-app.vercel.app/dashboard", // ✅ IMPORTANT
-      },
-    });
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: "https://sustaina-water-electricity-app.vercel.app/auth/callback",
+    },
+  });
 
-    if (error) throw error;
-  };
-
+  if (error) throw error;
+};
   // ✅ SIGN OUT
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
