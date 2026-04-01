@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react"; // ✅ ADD
+import { Eye, EyeOff } from "lucide-react";
 import authIllustration from "@/assets/auth-illustration.png";
 
 const Signup = () => {
@@ -13,13 +13,12 @@ const Signup = () => {
   const [password, setPassword] = useState("");
   const [mobile, setMobile] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [showPassword, setShowPassword] = useState(false); // ✅ ADD
+  const [showPassword, setShowPassword] = useState(false);
 
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!username.trim() || !email.trim() || !password.trim()) {
@@ -29,15 +28,9 @@ const Signup = () => {
 
     setLoading(true);
     try {
-      const { session } = await signUp(email, password, username, mobile);
-
-      if (session) {
-        toast.success("Account created successfully!");
-        navigate("/dashboard");
-      } else {
-        toast.success("Account created! Please login.");
-        navigate("/login");
-      }
+      await signUp(email, password, username, mobile);
+      toast.success("Account created! Check your email to verify.");
+      navigate("/login");
     } catch (err: any) {
       toast.error(err?.message || "Signup failed");
     } finally {
@@ -46,48 +39,73 @@ const Signup = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-3 sm:p-4">
-      <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-background p-2 sm:p-4">
+      <div className="w-full max-w-4xl rounded-2xl border border-border bg-card shadow-lg overflow-hidden">
         
-        <div className="grid grid-cols-[0.95fr_1.05fr] sm:grid-cols-[1fr_1.1fr]">
+        <div className="grid grid-cols-[2fr_3fr] sm:grid-cols-2">
           
-          <div className="flex min-w-0 items-center justify-center bg-secondary p-3 sm:p-5 md:p-8">
+          {/* Left Image */}
+          <div className="flex items-center justify-center bg-secondary p-3 sm:p-8">
             <img
               src={authIllustration}
               alt="Signup illustration"
-              className="h-auto w-full max-h-[260px] object-contain sm:max-h-[320px] md:max-h-[420px]"
-              loading="lazy"
+              className="w-full h-auto max-h-[160px] sm:max-h-[350px] object-contain"
             />
           </div>
 
-          <div className="min-w-0 p-4 sm:p-5 md:p-8 lg:p-10">
-            <h1 className="mb-1 font-display text-xl font-bold text-primary sm:text-2xl md:text-3xl">
-              Create Account
+          {/* Right Form */}
+          <div className="flex flex-col justify-center p-3 sm:p-6 md:p-10">
+            
+            {/* Logo */}
+            <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 mb-3 sm:mb-6">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-xs sm:text-sm">S</span>
+              </div>
+              <span className="font-display font-bold text-sm sm:text-lg text-foreground">
+                Sustaina
+              </span>
+            </div>
+
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-bold font-display text-foreground mb-0.5 sm:mb-1 text-center sm:text-left">
+              Get Started
             </h1>
-            <p className="mb-4 text-xs text-muted-foreground sm:mb-5 sm:text-sm">
-              Join us to discover all sustainable usage insights
+
+            <p className="text-muted-foreground mb-3 sm:mb-5 text-[11px] sm:text-sm text-center sm:text-left">
+              Create your account in seconds
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-              
+            {/* 🔥 DIRECT FORM (NO GOOGLE BUTTON) */}
+            <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
+
               <Input
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="h-9"
+                className="h-8 sm:h-11 text-xs sm:text-sm"
               />
+
+              <div className="flex gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1 px-2 sm:px-3 h-8 sm:h-11 rounded-md border border-input bg-background text-[11px] sm:text-sm text-muted-foreground shrink-0">
+                  🇮🇳 +91
+                </div>
+                <Input
+                  placeholder="Mobile No."
+                  value={mobile}
+                  onChange={(e) => setMobile(e.target.value)}
+                  className="h-8 sm:h-11 text-xs sm:text-sm"
+                />
+              </div>
 
               <Input
                 type="email"
-                placeholder="Email"
+                placeholder="Email Address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-9"
+                className="h-8 sm:h-11 text-xs sm:text-sm"
               />
 
-              {/* 🔥 PASSWORD WITH EYE */}
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -96,33 +114,34 @@ const Signup = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="h-9 pr-10"
+                  className="h-8 sm:h-11 pr-8 sm:pr-10 text-xs sm:text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? (
+                    <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  )}
                 </button>
               </div>
 
-              <Input
-                placeholder="Mobile No."
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
-                className="h-9"
-              />
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Signing up..." : "Sign Up"}
+              <Button
+                type="submit"
+                className="w-full h-8 sm:h-11 text-xs sm:text-sm"
+                disabled={loading}
+              >
+                {loading ? "Signing up..." : "Create Account"}
               </Button>
             </form>
 
-            <p className="mt-5 text-center text-sm text-muted-foreground">
+            <p className="mt-3 sm:mt-5 text-center text-[11px] sm:text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link to="/login" className="font-medium text-primary hover:underline">
-                Log in
+                Sign in
               </Link>
             </p>
 
