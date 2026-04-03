@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,8 @@ import { Plus, Search, Bell, HelpCircle, Zap, Droplets, AirVent, Fan, Flame, Dro
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import ProfileMenu from "@/components/ProfileMenu";
 import { Trash2 } from "lucide-react";
+
+
 
 const DEVICE_CATEGORIES = [
   { value: "ac", label: "AC", icon: AirVent },
@@ -35,6 +38,7 @@ type Target = { id: string; type: string; target_amount: number; month: number; 
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [targets, setTargets] = useState<Target[]>([]);
@@ -53,6 +57,7 @@ const Dashboard = () => {
   const [dailyAvgElec, setDailyAvgElec] = useState(0);
   const [dailyAvgWater, setDailyAvgWater] = useState(0);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -61,6 +66,23 @@ const Dashboard = () => {
       fetchConsumptionData();
     }
   }, [user]);
+
+  useEffect(() => {
+  if (!user) return;
+
+  const fetchUnreadCount = async () => {
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_read", false);
+
+    if (!error) setUnreadCount(count || 0);
+  };
+
+  fetchUnreadCount();
+}, [user]);
+
 
   useEffect(() => {
     if (selectedRoom) fetchDevices(selectedRoom);
@@ -350,20 +372,53 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="animate-fade-in space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold font-display text-primary ml-12 md:ml-0">Dashboard</h1>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-initial">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search devices..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 w-full sm:w-64" />
-          </div>
-          <Button variant="ghost" size="icon"><HelpCircle className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon"><Bell className="h-5 w-5" /></Button>
-          <ProfileMenu />
+  <div className="animate-fade-in space-y-6">
+    {/* Header */}
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      
+      <h1 className="text-2xl md:text-3xl font-bold font-display text-primary ml-12 md:ml-0">
+        Dashboard
+      </h1>
+
+      <div className="flex items-center gap-3 w-full sm:w-auto">
+        
+        {/* Search */}
+        <div className="relative flex-1 sm:flex-initial">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search devices..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full sm:w-64"
+          />
         </div>
+
+        {/* Help */}
+        <Button variant="ghost" size="icon">
+          <HelpCircle className="h-5 w-5" />
+        </Button>
+
+        <Button
+  variant="ghost"
+  size="icon"
+  type="button"
+  className="relative"
+  onClick={() => navigate("/dashboard/notifications")}
+>
+  <Bell className="h-5 w-5" />
+  {unreadCount > 0 && (
+    <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+      {unreadCount > 9 ? "9+" : unreadCount}
+    </span>
+  )}
+</Button>
+
+
+        {/* Profile */}
+        <ProfileMenu />
+
       </div>
+    </div>
 
       {/* Rooms */}
       <div className="flex flex-wrap items-center gap-2">
