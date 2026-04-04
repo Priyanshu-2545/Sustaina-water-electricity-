@@ -84,8 +84,9 @@ const AppSidebar = () => {
       {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-4 left-4 z-50 rounded-lg bg-primary p-2 text-primary-foreground md:hidden"
-      >
+        className="fixed top-4 left-4 z-[100] rounded-lg bg-primary p-2 text-primary-foreground md:hidden"
+        >
+
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 

@@ -3,7 +3,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
-import { Zap, Droplets, TrendingDown, TrendingUp, BarChart3 } from "lucide-react";
+import { Zap, Droplets, TrendingDown, TrendingUp, BarChart3, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {jsPDF} from "jspdf";
 
 const COLORS = ["hsl(205, 90%, 60%)", "hsl(185, 70%, 50%)", "hsl(152, 60%, 45%)", "hsl(38, 92%, 50%)"];
 
@@ -13,6 +15,7 @@ const Reports = () => {
   const [type, setType] = useState("all");
   const [dailyData, setDailyData] = useState<any[]>([]);
   const [roomData, setRoomData] = useState<any[]>([]);
+  const [allLogs, setAllLogs] = useState<any[]>([]);
   const [totalElec, setTotalElec] = useState(0);
   const [totalWater, setTotalWater] = useState(0);
   const [prevElec, setPrevElec] = useState(0);
@@ -32,14 +35,14 @@ const Reports = () => {
     if (type !== "all") query = query.eq("type", type);
     const { data: logs } = await query;
 
-    // Previous period
     let prevQuery = supabase.from("consumption_logs").select("*")
       .gte("logged_at", prevStart).lt("logged_at", startDate);
     if (type !== "all") prevQuery = prevQuery.eq("type", type);
     const { data: prevLogs } = await prevQuery;
 
     if (logs) {
-      // Daily aggregation
+      setAllLogs(logs);
+
       const daily: Record<string, { electricity: number; water: number }> = {};
       logs.forEach((l) => {
         const day = new Date(l.logged_at).toLocaleDateString("en", { month: "short", day: "numeric" });
@@ -49,7 +52,6 @@ const Reports = () => {
       });
       setDailyData(Object.entries(daily).map(([date, v]) => ({ date, ...v })));
 
-      // Room aggregation
       const rooms: Record<string, number> = {};
       logs.forEach((l) => {
         const key = l.room_id || "Unknown";
@@ -73,7 +75,6 @@ const Reports = () => {
       setPrevElec(pe);
       setPrevWater(pw);
 
-      // Build comparison data by week
       const buildWeekly = (data: any[], label: string) => {
         const weeks: Record<string, { electricity: number; water: number }> = {};
         data.forEach((l) => {
@@ -90,7 +91,6 @@ const Reports = () => {
       const currentWeekly = buildWeekly(logs || [], "current");
       const prevWeekly = buildWeekly(prevLogs, "prev");
 
-      // Merge
       const maxLen = Math.max(currentWeekly.length, prevWeekly.length);
       const merged = [];
       for (let i = 0; i < maxLen; i++) {
@@ -106,32 +106,139 @@ const Reports = () => {
     }
   };
 
+  const downloadCSV = () => {
+    if (allLogs.length === 0) return;
+    const headers = "Date,Type,Amount,Unit,Room ID\n";
+    const rows = allLogs.map(l =>
+      `${new Date(l.logged_at).toLocaleDateString()},${l.type},${l.amount},${l.unit},${l.room_id || "N/A"}`
+    ).join("\n");
+    const blob = new Blob([headers + rows], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sustaina-report-${period}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPDF = () => {
+  if (allLogs.length === 0) return;
+
+  const pdf = new jsPDF();
+
+  // Title
+  pdf.setFontSize(18);
+  pdf.text("Sustaina Report", 14, 20);
+
+  pdf.setFontSize(10);
+  pdf.text(`Period: ${period}`, 14, 28);
+
+  // Table headers
+  let y = 40;
+
+  pdf.setFontSize(12);
+  pdf.text("Date", 14, y);
+  pdf.text("Type", 50, y);
+  pdf.text("Amount", 90, y);
+  pdf.text("Unit", 120, y);
+
+  y += 6;
+
+  pdf.setDrawColor(0);
+  pdf.line(14, y, 200, y);
+
+  y += 6;
+
+  // Table rows
+  allLogs.forEach((log, i) => {
+    if (y > 280) {
+      pdf.addPage();
+      y = 20;
+    }
+
+    pdf.text(new Date(log.logged_at).toLocaleDateString(), 14, y);
+    pdf.text(log.type, 50, y);
+    pdf.text(String(log.amount), 90, y);
+    pdf.text(log.unit || "-", 120, y);
+
+    y += 8;
+  });
+
+  // Summary section
+  y += 10;
+
+  pdf.setFontSize(14);
+  pdf.text("Summary", 14, y);
+
+  y += 8;
+
+  pdf.setFontSize(11);
+  pdf.text(`Total Electricity: ${totalElec.toFixed(2)} kWh`, 14, y);
+  y += 6;
+  pdf.text(`Total Water: ${totalWater.toFixed(2)} L`, 14, y);
+
+  pdf.save(`sustaina-report-${period}.pdf`);
+};
+
   const elecChange = prevElec > 0 ? ((totalElec - prevElec) / prevElec) * 100 : 0;
   const waterChange = prevWater > 0 ? ((totalWater - prevWater) / prevWater) * 100 : 0;
 
   return (
-    <div className="animate-fade-in space-y-6 ml-12 md:ml-0">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold font-display text-primary">Reports & Analytics</h1>
-        <div className="flex gap-2">
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="electricity">Electricity</SelectItem>
-              <SelectItem value="water">Water</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">7 Days</SelectItem>
-              <SelectItem value="30d">30 Days</SelectItem>
-              <SelectItem value="90d">90 Days</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+    <div id="report-content" className="animate-fade-in space-y-6 ml-12 md:ml-0">
+  
+  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    
+    <h1 className="text-2xl md:text-3xl font-bold font-display text-primary">
+      Reports & Analytics
+    </h1>
+
+    {/* 🔥 RIGHT SIDE CLEAN UI */}
+    <div className="flex gap-2 items-center flex-wrap">
+
+      {/* Filter: Type */}
+      <Select value={type} onValueChange={setType}>
+        <SelectTrigger className="w-36">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Types</SelectItem>
+          <SelectItem value="electricity">Electricity</SelectItem>
+          <SelectItem value="water">Water</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {/* Filter: Period */}
+      <Select value={period} onValueChange={setPeriod}>
+        <SelectTrigger className="w-28">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="7d">7 Days</SelectItem>
+          <SelectItem value="30d">30 Days</SelectItem>
+          <SelectItem value="90d">90 Days</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {/* 🔥 FIXED EXPORT DROPDOWN */}
+      <Select
+        onValueChange={(value) => {
+          if (value === "csv") downloadCSV();
+          if (value === "pdf") downloadPDF();
+        }}
+      >
+        <SelectTrigger className="w-32 flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          Export
+        </SelectTrigger>
+
+        <SelectContent>
+          <SelectItem value="csv">Download CSV</SelectItem>
+          <SelectItem value="pdf">Download PDF</SelectItem>
+        </SelectContent>
+      </Select>
+
+    </div>
+  </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -204,7 +311,7 @@ const Reports = () => {
         </div>
       </div>
 
-      {/* Comparison Chart — This Period vs Last Period */}
+      {/* Comparison Chart */}
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 className="h-5 w-5 text-primary" />

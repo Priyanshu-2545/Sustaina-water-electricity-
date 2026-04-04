@@ -374,8 +374,7 @@ const Dashboard = () => {
   return (
   <div className="animate-fade-in space-y-6">
     {/* Header */}
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      
+    <div className="sticky top-0 z-50 bg-background flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4">
       <h1 className="text-2xl md:text-3xl font-bold font-display text-primary ml-12 md:ml-0">
         Dashboard
       </h1>
