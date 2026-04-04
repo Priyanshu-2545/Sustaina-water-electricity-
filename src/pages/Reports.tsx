@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { Zap, Droplets, TrendingDown, TrendingUp, BarChart3, Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {jsPDF} from "jspdf";
 
 const COLORS = ["hsl(205, 90%, 60%)", "hsl(185, 70%, 50%)", "hsl(152, 60%, 45%)", "hsl(38, 92%, 50%)"];
