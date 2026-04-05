@@ -4,9 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { Zap, Droplets, TrendingDown, TrendingUp, BarChart3, Download } from "lucide-react";
-import {jsPDF} from "jspdf";
+import { jsPDF } from "jspdf";
 
 const COLORS = ["hsl(205, 90%, 60%)", "hsl(185, 70%, 50%)", "hsl(152, 60%, 45%)", "hsl(38, 92%, 50%)"];
+
+const ELEC_RATE = 8; // ₹ per kWh
+const WATER_RATE = 0.05; // ₹ per Litre
+const GST_PERCENT = 18;
 
 const Reports = () => {
   const { user } = useAuth();
@@ -107,10 +111,12 @@ const Reports = () => {
 
   const downloadCSV = () => {
     if (allLogs.length === 0) return;
-    const headers = "Date,Type,Amount,Unit,Room ID\n";
-    const rows = allLogs.map(l =>
-      `${new Date(l.logged_at).toLocaleDateString()},${l.type},${l.amount},${l.unit},${l.room_id || "N/A"}`
-    ).join("\n");
+    const headers = "Date,Type,Amount,Unit,Rate,Cost\n";
+    const rows = allLogs.map(l => {
+      const rate = l.type === "electricity" ? ELEC_RATE : WATER_RATE;
+      const cost = Number(l.amount) * rate;
+      return `${new Date(l.logged_at).toLocaleDateString()},${l.type},${l.amount},${l.unit},${rate},${cost.toFixed(2)}`;
+    }).join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -121,123 +127,190 @@ const Reports = () => {
   };
 
   const downloadPDF = () => {
-  if (allLogs.length === 0) return;
+    if (allLogs.length === 0) return;
 
-  const pdf = new jsPDF();
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const invoiceId = `INV-${Date.now().toString(36).toUpperCase()}`;
+    const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    const userName = user?.user_metadata?.username || user?.email || "Customer";
 
-  // Title
-  pdf.setFontSize(18);
-  pdf.text("Sustaina Report", 14, 20);
+    // ===== HEADER BAR =====
+    pdf.setFillColor(16, 85, 154); // dark blue
+    pdf.rect(0, 0, pageWidth, 38, "F");
 
-  pdf.setFontSize(10);
-  pdf.text(`Period: ${period}`, 14, 28);
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(22);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("SUSTAINA", 14, 18);
 
-  // Table headers
-  let y = 40;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text("Energy & Water Management", 14, 26);
+    pdf.text("Smart Consumption Tracking Platform", 14, 32);
 
-  pdf.setFontSize(12);
-  pdf.text("Date", 14, y);
-  pdf.text("Type", 50, y);
-  pdf.text("Amount", 90, y);
-  pdf.text("Unit", 120, y);
+    // Right side header info
+    pdf.setFontSize(10);
+    pdf.text(`Invoice: ${invoiceId}`, pageWidth - 14, 18, { align: "right" });
+    pdf.text(`Date: ${today}`, pageWidth - 14, 26, { align: "right" });
+    pdf.text(`Period: ${period === "7d" ? "Last 7 Days" : period === "30d" ? "Last 30 Days" : "Last 90 Days"}`, pageWidth - 14, 32, { align: "right" });
 
-  y += 6;
+    // ===== BILL TO =====
+    pdf.setTextColor(0, 0, 0);
+    let y = 50;
 
-  pdf.setDrawColor(0);
-  pdf.line(14, y, 200, y);
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Bill To:", 14, y);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(userName, 14, y + 7);
+    pdf.text(user?.email || "", 14, y + 14);
 
-  y += 6;
+    // ===== TABLE HEADER =====
+    y = 82;
 
-  // Table rows
-  allLogs.forEach((log, i) => {
-    if (y > 280) {
-      pdf.addPage();
-      y = 20;
-    }
+    pdf.setFillColor(230, 240, 250);
+    pdf.rect(14, y - 5, pageWidth - 28, 10, "F");
 
-    pdf.text(new Date(log.logged_at).toLocaleDateString(), 14, y);
-    pdf.text(log.type, 50, y);
-    pdf.text(String(log.amount), 90, y);
-    pdf.text(log.unit || "-", 120, y);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(16, 85, 154);
+    pdf.text("Date", 16, y + 1);
+    pdf.text("Type", 52, y + 1);
+    pdf.text("Units", 90, y + 1);
+    pdf.text("Unit", 112, y + 1);
+    pdf.text("Rate (Rs)", 135, y + 1);
+    pdf.text("Cost (Rs)", 168, y + 1);
+
+    y += 12;
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont("helvetica", "normal");
+
+    let subtotal = 0;
+
+    // ===== TABLE ROWS =====
+    allLogs.forEach((log) => {
+      if (y > 260) {
+        pdf.addPage();
+        y = 20;
+      }
+
+      const rate = log.type === "electricity" ? ELEC_RATE : WATER_RATE;
+      const cost = Number(log.amount) * rate;
+      subtotal += cost;
+
+      const dateStr = new Date(log.logged_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+
+      pdf.setFontSize(9);
+      pdf.text(dateStr, 16, y);
+      pdf.text(log.type.charAt(0).toUpperCase() + log.type.slice(1), 52, y);
+      pdf.text(String(log.amount), 90, y);
+      pdf.text(log.unit || "-", 112, y);
+      pdf.text(`Rs ${rate.toFixed(2)}`, 135, y);
+      pdf.text(`Rs ${cost.toFixed(2)}`, 168, y);
+
+      y += 7;
+    });
+
+    // ===== DIVIDER LINE =====
+    y += 4;
+    if (y > 250) { pdf.addPage(); y = 20; }
+    pdf.setDrawColor(16, 85, 154);
+    pdf.setLineWidth(0.5);
+    pdf.line(14, y, pageWidth - 14, y);
+
+    // ===== SUMMARY SECTION =====
+    y += 10;
+
+    const gst = subtotal * (GST_PERCENT / 100);
+    const grandTotal = subtotal + gst;
+
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "normal");
+    pdf.text("Subtotal:", 130, y);
+    pdf.text(`Rs ${subtotal.toFixed(2)}`, 168, y);
 
     y += 8;
-  });
+    pdf.text(`GST (${GST_PERCENT}%):`, 130, y);
+    pdf.text(`Rs ${gst.toFixed(2)}`, 168, y);
 
-  // Summary section
-  y += 10;
+    y += 4;
+    pdf.setDrawColor(0);
+    pdf.line(128, y, pageWidth - 14, y);
 
-  pdf.setFontSize(14);
-  pdf.text("Summary", 14, y);
+    y += 8;
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(13);
+    pdf.setTextColor(16, 85, 154);
+    pdf.text("Grand Total:", 128, y);
+    pdf.text(`Rs ${grandTotal.toFixed(2)}`, 168, y);
 
-  y += 8;
+    // ===== CONSUMPTION SUMMARY BOX =====
+    y += 16;
+    if (y > 245) { pdf.addPage(); y = 20; }
 
-  pdf.setFontSize(11);
-  pdf.text(`Total Electricity: ${totalElec.toFixed(2)} kWh`, 14, y);
-  y += 6;
-  pdf.text(`Total Water: ${totalWater.toFixed(2)} L`, 14, y);
+    pdf.setFillColor(245, 248, 252);
+    pdf.roundedRect(14, y - 4, pageWidth - 28, 30, 3, 3, "F");
 
-  pdf.save(`sustaina-report-${period}.pdf`);
-};
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Consumption Summary", 18, y + 4);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Total Electricity: ${totalElec.toFixed(2)} kWh (Rs ${(totalElec * ELEC_RATE).toFixed(2)})`, 18, y + 14);
+    pdf.text(`Total Water: ${totalWater.toFixed(2)} L (Rs ${(totalWater * WATER_RATE).toFixed(2)})`, 18, y + 22);
+
+    // ===== FOOTER =====
+    const footerY = pdf.internal.pageSize.getHeight() - 14;
+    pdf.setFontSize(8);
+    pdf.setTextColor(130, 130, 130);
+    pdf.text("This is a computer-generated bill by Sustaina. No signature required.", 14, footerY);
+    pdf.text(`Generated on ${new Date().toLocaleString("en-IN")}`, pageWidth - 14, footerY, { align: "right" });
+
+    pdf.save(`sustaina-bill-${period}.pdf`);
+  };
 
   const elecChange = prevElec > 0 ? ((totalElec - prevElec) / prevElec) * 100 : 0;
   const waterChange = prevWater > 0 ? ((totalWater - prevWater) / prevWater) * 100 : 0;
 
   return (
     <div id="report-content" className="animate-fade-in space-y-6 ml-12 md:ml-0">
-  
-  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-    
-    <h1 className="text-2xl md:text-3xl font-bold font-display text-primary">
-      Reports & Analytics
-    </h1>
-
-    {/* 🔥 RIGHT SIDE CLEAN UI */}
-    <div className="flex gap-2 items-center flex-wrap">
-
-      {/* Filter: Type */}
-      <Select value={type} onValueChange={setType}>
-        <SelectTrigger className="w-36">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
-          <SelectItem value="electricity">Electricity</SelectItem>
-          <SelectItem value="water">Water</SelectItem>
-        </SelectContent>
-      </Select>
-
-      {/* Filter: Period */}
-      <Select value={period} onValueChange={setPeriod}>
-        <SelectTrigger className="w-28">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="7d">7 Days</SelectItem>
-          <SelectItem value="30d">30 Days</SelectItem>
-          <SelectItem value="90d">90 Days</SelectItem>
-        </SelectContent>
-      </Select>
-
-      {/* 🔥 FIXED EXPORT DROPDOWN */}
-      <Select
-        onValueChange={(value) => {
-          if (value === "csv") downloadCSV();
-          if (value === "pdf") downloadPDF();
-        }}
-      >
-        <SelectTrigger className="w-32 flex items-center gap-2">
-          <Download className="h-4 w-4" />
-          Export
-        </SelectTrigger>
-
-        <SelectContent>
-          <SelectItem value="csv">Download CSV</SelectItem>
-          <SelectItem value="pdf">Download PDF</SelectItem>
-        </SelectContent>
-      </Select>
-
-    </div>
-  </div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold font-display text-primary">Reports & Analytics</h1>
+        <div className="flex gap-2 flex-wrap">
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="electricity">Electricity</SelectItem>
+              <SelectItem value="water">Water</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">7 Days</SelectItem>
+              <SelectItem value="30d">30 Days</SelectItem>
+              <SelectItem value="90d">90 Days</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select onValueChange={(value) => {
+            if (value === "csv") downloadCSV();
+            if (value === "pdf") downloadPDF();
+          }}>
+            <SelectTrigger className="w-32">
+              <Download className="h-4 w-4 mr-1" />
+              <span>Export</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="csv">Download CSV</SelectItem>
+              <SelectItem value="pdf">Download PDF</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
